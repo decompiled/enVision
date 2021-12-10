@@ -7,7 +7,7 @@ using System.Security;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace enVision
+namespace Aimbot
 {
     class Program
     {
@@ -17,7 +17,7 @@ namespace enVision
         private const int InputMouse = 0;
         private const int SleepTime = 4;
         private const int SleepTime2 = 1;
-        private const int TriggerTime = 200;
+        private const int TriggerTime = 50;
         private const int WhKeyboardLl = 13;
         private const int WmKeydown = 0x0100;
         private const uint KeyeventfKeyup = 0x0002;
@@ -26,22 +26,24 @@ namespace enVision
         private const uint MouseeventfMove = 0x0001;
         private const ushort Key = (ushort)Keys.F8;
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-        private static bool _killAutoClick;
-        private static bool _killAutoMove;
+        private static bool _killautofire;
+        private static bool _killautoaim;
         private static IntPtr _hookId = IntPtr.Zero;
         private static readonly LowLevelKeyboardProc Proc = HookCallback;
-        private const int pointoffset = 50; //32
-        private const int Correction = 46;
+        private const int Lgoffset = 50; //44
+        private const int Correction = 30;
+        //private const int min = 1;
+        //private const int max = 50;
         #endregion
 
         static void Main()
         {
-            Console.WriteLine("enVision Loaded");
-            Console.WriteLine(pointoffset + "x" + SleepTime2);
+            Console.WriteLine("Aimbot Loaded");
+            Console.WriteLine(Lgoffset + "x" + SleepTime2);
             new Thread(Autofire).Start();
             new Thread(AutoAim).Start();
-            _killAutoClick = true;
-            _killAutoMove = true;
+            _killautofire = true;
+            _killautoaim = true;
             _hookId = SetHook(Proc);
             Application.Run();
             SafeNativeMethods.UnhookWindowsHookEx(_hookId);
@@ -61,32 +63,32 @@ namespace enVision
             if (nCode >= 0 && wParam == (IntPtr)WmKeydown)
             {
                 var vkCode = Marshal.ReadInt32(lParam);
-                const int r = 0x52; 
-                const int e = 0x45; 
-                const int f = 0x46; 
-                const int q = 0x51; 
-                const int z = 0x5A; 
-                const int x2 = 0x32; // 2
-                const int x3 = 0x33; // 3
-                const int x4 = 0x34; // 4
+                const int r = 0x52; // rail
+                const int e = 0x45; // lg
+                const int f = 0x46; // plasma
+                const int q = 0x51; // rocket
+                const int z = 0x5A; // gauntlet
+                const int mg = 0x32; // mg = 2
+                const int sg = 0x33; // sg = 3
+                const int gl = 0x34; // gl = 4
                 switch (vkCode)
                 {
                     case r:
-                    case x3:
-                        _killAutoClick = false;
-                        _killAutoMove = true;
+                    case sg:
+                        _killautofire = false;
+                        _killautoaim = true;
                         break;
                     case q:
-                    case x2:
+                    case mg:
                     case z:
-                    case x4:
+                    case gl:
                     case f:
-                        _killAutoClick = true;
-                        _killAutoMove = true;
+                        _killautofire = true;
+                        _killautoaim = true;
                         break;
                     case e:
-                        _killAutoClick = true;
-                        _killAutoMove = false;
+                        _killautofire = true;
+                        _killautoaim = false;
                         break;
                     case 44:
                         Environment.Exit(0);
@@ -102,7 +104,7 @@ namespace enVision
 
             while (true)
             {
-                if (_killAutoClick)
+                if (_killautofire)
                 {
                     Thread.Sleep(SleepTime);
                     continue;
@@ -111,7 +113,7 @@ namespace enVision
                 SafeNativeMethods.GetCursorPos(ref cursor);
 
                 var c = GetColorAt(cursor);
-
+                //Console.WriteLine("R:{0} G:{1} B:{2}", c.R, c.G, c.B);
                 if (c.R < 50 && c.G > 150 && c.B < 50)
                 {
                     var scanCode = (ushort)SafeNativeMethods.MapVirtualKey(Key, 0);
@@ -120,7 +122,6 @@ namespace enVision
                     input.ki.dwFlags = KeyeventfScancode | KeyeventfKeyup;
                     SafeNativeMethods.SendInput(1, ref input, Marshal.SizeOf(typeof(Input)));
                     Thread.Sleep(TriggerTime);
-
                 }
 
                 Thread.Sleep(SleepTime);
@@ -134,9 +135,9 @@ namespace enVision
 
             while (true)
             {
-                if (_killAutoMove)
+                if (_killautoaim)
                 {
-                    Thread.Sleep(500);
+                    Thread.Sleep(10);
                     continue;
                 }
 
@@ -148,28 +149,23 @@ namespace enVision
 
                 //Console.WriteLine("{0}:{1}:{2}-{3}:{4}:{5}-{6}:{7}:{8}", cl.R, cl.G, cl.B, c.R, c.G, c.B, cr.R, cr.G, cr.B);
 
+                //Random random = new Random();
+                //int number = random.Next(min, max);
+
                 if (c.R < 50 && c.G > 150 && c.B < 50)
                 {
-                    Thread.Sleep(SleepTime2);
                     continue;
-                }
-
-                if (cl.R < 50 && cl.G > 150 && cl.B < 50)
+                } else if (cl.R < 50 && cl.G > 150 && cl.B < 50)
                 {
                     SimMov(-1);
                     Thread.Sleep(SleepTime2);
                     continue;
-                }
-
-                if (cr.R < 50 && cr.G > 150 && cr.B < 50)
+                } else if (cr.R < 50 && cr.G > 150 && cr.B < 50)
                 {
                     SimMov(1);
                     Thread.Sleep(SleepTime2);
                     continue;
                 }
-
-                Thread.Sleep(SleepTime2);
-
             }
 // ReSharper disable once FunctionNeverReturns
         }
@@ -215,7 +211,7 @@ namespace enVision
                         {
                             var hSrcDc = gsrc.GetHdc();
                             var hDc = gdest.GetHdc();
-                            SafeNativeMethods.BitBlt(hDc, 0, 0, 1, 1, hSrcDc, location.X - pointoffset, location.Y,
+                            SafeNativeMethods.BitBlt(hDc, 0, 0, 1, 1, hSrcDc, location.X - Lgoffset, location.Y,
                                 (int)CopyPixelOperation.SourceCopy);
 
                         }
@@ -242,7 +238,7 @@ namespace enVision
                         {
                             var hSrcDc = gsrc.GetHdc();
                             var hDc = gdest.GetHdc();
-                            SafeNativeMethods.BitBlt(hDc, 0, 0, 1, 1, hSrcDc, location.X + pointoffset, location.Y,
+                            SafeNativeMethods.BitBlt(hDc, 0, 0, 1, 1, hSrcDc, location.X + Lgoffset, location.Y,
                                 (int)CopyPixelOperation.SourceCopy);
                         }
                         finally
@@ -256,20 +252,62 @@ namespace enVision
             }
         }
 
-        private static void SimMov(int x)
+        public static double MovePixelsPerMillisecond { get; set; } = 1; //1
+
+        public static double MovePixelsPerStep { get; set; } = 10; //3
+
+        public static void Lerp(int endPoint, TimeSpan duration, TimeSpan interval)
         {
-            if (x > 0)
+            //Console.WriteLine("ep: " + endPoint + "dur: " + duration + "interval: " + interval);
+            var stopwatch = Stopwatch.StartNew();
+
+            while (true)
             {
-                var input = new Input { type = InputMouse, mi = new MouseInput { dx = pointoffset + Correction, dy = 0, mouseData = 0, time = 0, dwFlags = MouseeventfAbsolute | MouseeventfMove } };
+                Thread.Sleep(interval);
+                var factor = GetFactor(duration, stopwatch);
+
+                var myDx = (int)(0 + (factor * (endPoint - 0)));
+
+                var input = new Input { type = InputMouse, mi = new MouseInput { dx = myDx, dy = 0, mouseData = 0, time = 0, dwFlags = MouseeventfAbsolute | MouseeventfMove } };
                 SafeNativeMethods.SendInput(1, ref input, Marshal.SizeOf(typeof(Input)));
 
+                if (factor == 1)
+                {
+                    break;
+                }
+            }
+        }
+
+        private static double GetFactor(TimeSpan duration, Stopwatch stopwatch)
+        {
+            if (duration.TotalMilliseconds == 0)
+            {
+                return 1;
+            }
+            var factor = stopwatch.ElapsedMilliseconds / duration.TotalMilliseconds;
+            if (factor > 1)
+            {
+                factor = 1;
+            }
+            return factor;
+        }
+
+        private static void SimMov(int x)
+        {
+            // Calculate some values for duration and interval
+            var totalDistance = Lgoffset + Correction;
+            var duration = TimeSpan.FromMilliseconds(Convert.ToInt32(totalDistance / MovePixelsPerMillisecond));
+            var steps = Math.Max(Convert.ToInt32(totalDistance / MovePixelsPerStep), 1);
+            var interval = TimeSpan.FromMilliseconds(duration.TotalMilliseconds / steps);
+
+            if (x > 0)
+            {
+                Lerp(totalDistance, duration, interval);
             }
             else if (x < 0)
             {
-                var input = new Input { type = InputMouse, mi = new MouseInput { dx = (pointoffset + Correction) * -1, dy = 0, mouseData = 0, time = 0, dwFlags = MouseeventfAbsolute | MouseeventfMove } };
-                SafeNativeMethods.SendInput(1, ref input, Marshal.SizeOf(typeof(Input)));
+                Lerp(totalDistance * -1, duration, interval);
             }
-
         }
     }
 
